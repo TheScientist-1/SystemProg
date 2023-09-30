@@ -81,8 +81,9 @@ void freeArray(DynamicArray *array) {
 
 int main() {
     setlocale(LC_ALL, "uk_UA.UTF-8");
-    FILE *file = fopen("ukr.txt", "r");
-    if (file == NULL) {
+    FILE *file;
+    errno_t err = fopen_s(&file, "ukr.txt", "r, ccs=UTF-8");
+    if (err != 0) {
         fprintf(stderr, "Could not open file\n");
         return 1;
     }
@@ -92,13 +93,12 @@ int main() {
 
     wchar_t *word;
     while ((word = get_next_word(file)) != NULL) {
-        printf("Read word: %S\n", word);
+        printf(L"Read word: %S\n", word);
         if (isUniqueChars(word)) {
             insertArray(&array, word);
         }
         free(word);
     }
-
 
     fclose(file);
 
