@@ -70,7 +70,6 @@ void insertArray(DynamicArray *array, const wchar_t *element) {
     array->data[array->size] = (wchar_t *)malloc(sizeof(wchar_t) * (wcslen(element) + 1));
     wcscpy(array->data[array->size], element);
     array->size++;
-    wprintf(L"Inserted word: %ls\n", element);
 }
 
 void freeArray(DynamicArray *array) {
@@ -81,8 +80,7 @@ void freeArray(DynamicArray *array) {
 }
 
 int main() {
-    setlocale(LC_ALL, "en_US.UTF-8"); // Change to your desired locale
-
+    setlocale(LC_ALL, "uk_UA.UTF-8");
     FILE *file = fopen("ukr.txt", "r");
     if (file == NULL) {
         fprintf(stderr, "Could not open file\n");
@@ -94,16 +92,18 @@ int main() {
 
     wchar_t *word;
     while ((word = get_next_word(file)) != NULL) {
+        printf("Read word: %s\n", word);
         if (isUniqueChars(word)) {
             insertArray(&array, word);
         }
         free(word);
     }
 
+
     fclose(file);
 
     for (int i = 0; i < array.size; i++) {
-        wprintf(L"%ls\n", array.data[i]);
+        printf(L"%ls\n", array.data[i]);
     }
 
     freeArray(&array);
