@@ -6,8 +6,7 @@
 #include <wchar.h>
 #include <wctype.h>
 
-
-
+#define max_word_length 31
 
 typedef struct {
     wchar_t **data;
@@ -15,8 +14,8 @@ typedef struct {
     int capacity;
 } DynamicArray;
 
-bool isUniqueChars(wchar_t * str) {
-    bool char_set[255] = {false};
+bool isUniqueChars(const wchar_t *str) {
+    bool char_set[65536] = {false};
     for (int i = 0; i < wcslen(str); i++) {
         int val = (int) str[i];
         if(char_set[val]) return false;
@@ -25,35 +24,40 @@ bool isUniqueChars(wchar_t * str) {
     return true;
 }
 
-void extractWords(wchar_t* line, DynamicArray* array) {
-    wchar_t word[31];
-    int wordIndex = 0;
-    for (int i = 0; i < wcslen(line); i++) {
-        if (iswalpha(line[i]) || line[i] == L'_') {
-            word[wordIndex++] = line[i];
-        } else if (wordIndex > 0) {
-            word[wordIndex] = '\0';
-            if (isUniqueChars(word)) {
-                insertArray(array, word);
-            }
-            wordIndex = 0;
-        }
+wchar_t *get_next_word(FILE *document) {
+    wchar_t *new_word_placeholder = malloc(sizeof(wchar_t) * max_word_length);
+    int pointer = 0;
+    wint_t character = fgetwc(document);
+
+    while (character != WEOF && (!iswalnum(character) && character != L'_')) {
+        character = fgetwc(document);  // Skip non-alphanumeric characters
     }
-    if (wordIndex > 0) {
-        word[wordIndex] = '\0';
-        if (isUniqueChars(word)) {
-            insertArray(array, word);
+
+    while (character != WEOF && (iswalnum(character) || character == L'_')) {
+        new_word_placeholder[pointer] = character;
+        pointer++;
+        if (pointer == max_word_length - 1) {
+            break;  // Avoid buffer overflow
         }
+        character = fgetwc(document);
+    }
+
+    if (pointer == 0) {
+        free(new_word_placeholder);
+        return NULL;
+    } else {
+        new_word_placeholder[pointer] = L'\0';
+        return new_word_placeholder;
     }
 }
 
-void initArray(DynamicArray* array, int capacity) {
+void initArray(DynamicArray *array, int capacity) {
     array->data = (wchar_t **)malloc(sizeof(wchar_t *) * capacity);
     array->size = 0;
     array->capacity = capacity;
 }
 
-void insertArray(DynamicArray* array, const wchar_t* element) {
+void insertArray(DynamicArray *array, const wchar_t *element) {
     for (int i = 0; i < array->size; i++) {
         if (wcscmp(array->data[i], element) == 0) {
             return;  // Avoid duplicates
@@ -61,25 +65,23 @@ void insertArray(DynamicArray* array, const wchar_t* element) {
     }
     if (array->size == array->capacity) {
         array->capacity *= 2;
-        array->data = (wchar_t  **)realloc(array->data, sizeof(wchar_t  *) * array->capacity);
+        array->data = (wchar_t **)realloc(array->data, sizeof(wchar_t *) * array->capacity);
     }
     array->data[array->size] = (wchar_t *)malloc(sizeof(wchar_t) * (wcslen(element) + 1));
     wcscpy(array->data[array->size], element);
     array->size++;
     wprintf(L"Inserted word: %ls\n", element);
-
 }
 
-void freeArray(DynamicArray* array) {
+void freeArray(DynamicArray *array) {
     for (int i = 0; i < array->size; i++) {
         free(array->data[i]);
     }
     free(array->data);
 }
 
-
 int main() {
-    setlocale(LC_ALL, "uk_UA.UTF-8");
+    setlocale(LC_ALL, "en_US.UTF-8"); // Change to your desired locale
 
     FILE *file = fopen("ukr.txt", "r");
     if (file == NULL) {
@@ -90,26 +92,15 @@ int main() {
     DynamicArray array;
     initArray(&array, 10);
 
-    char line_mb[1024];
-    wchar_t line[1024];
-    while (fgetws(line_mb, sizeof(line_mb), file)) {
-        mbstowcs(line, line_mb, sizeof(line) / sizeof(wchar_t));  // Convert multibyte to wide characters
-        extractWords(line, &array);
+    wchar_t *word;
+    while ((word = get_next_word(file)) != NULL) {
+        if (isUniqueChars(word)) {
+            insertArray(&array, word);
+        }
+        free(word);
     }
 
     fclose(file);
-
-/*while (fgets(line_mb, sizeof(line_mb), file)) {
-        size_t len = mbstowcs(NULL, line_mb, 0);  // Get the required length
-        if(len == (size_t)-1) {
-            fprintf(stderr, "Conversion error\n");
-            continue;
-        }
-
-        mbstowcs(line, line_mb, len + 1);  // Convert multibyte to wide characters
-        line[len] = L'\0';  // Ensure the string is null-terminated
-        extractWords(line, &array);
-    }*/
 
     for (int i = 0; i < array.size; i++) {
         wprintf(L"%ls\n", array.data[i]);
@@ -118,4 +109,4 @@ int main() {
     freeArray(&array);
 
     return 0;
-    }
+}
