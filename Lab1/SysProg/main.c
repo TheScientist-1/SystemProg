@@ -92,7 +92,7 @@ int main() {
 
     wchar_t *word;
     while ((word = get_next_word(file)) != NULL) {
-        printf("Read word: %s\n", word);
+        printf("Read word: %S\n", word);
         if (isUniqueChars(word)) {
             insertArray(&array, word);
         }
@@ -103,7 +103,7 @@ int main() {
     fclose(file);
 
     for (int i = 0; i < array.size; i++) {
-        printf(L"%ls\n", array.data[i]);
+        printf(L"%S\n", array.data[i]);
     }
 
     freeArray(&array);
