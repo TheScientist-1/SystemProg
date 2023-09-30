@@ -5,7 +5,6 @@
 #include <locale.h>
 #include <wchar.h>
 #include <wctype.h>
-#include <glib.h>
 
 
 
@@ -80,28 +79,27 @@ void freeArray(DynamicArray* array) {
 
 
 int main() {
-    setlocale(LC_ALL, "");
+    setlocale(LC_ALL, "uk_UA.UTF-8");
 
     FILE *file = fopen("ukr.txt", "r");
     if (file == NULL) {
         fprintf(stderr, "Could not open file\n");
         return 1;
-}
+    }
 
     DynamicArray array;
     initArray(&array, 10);
 
-
-    /*while (fgets(line_mb, sizeof(line_mb), file)) {
+    char line_mb[1024];
+    wchar_t line[1024];
+    while (fgetws(line_mb, sizeof(line_mb), file)) {
         mbstowcs(line, line_mb, sizeof(line) / sizeof(wchar_t));  // Convert multibyte to wide characters
         extractWords(line, &array);
     }
 
-    fclose(file);*/
+    fclose(file);
 
-    char line_mb[1024];
-    wchar_t line[1024];
-    while (fgets(line_mb, sizeof(line_mb), file)) {
+/*while (fgets(line_mb, sizeof(line_mb), file)) {
         size_t len = mbstowcs(NULL, line_mb, 0);  // Get the required length
         if(len == (size_t)-1) {
             fprintf(stderr, "Conversion error\n");
@@ -111,9 +109,7 @@ int main() {
         mbstowcs(line, line_mb, len + 1);  // Convert multibyte to wide characters
         line[len] = L'\0';  // Ensure the string is null-terminated
         extractWords(line, &array);
-    }
-
-    fclose(file);
+    }*/
 
     for (int i = 0; i < array.size; i++) {
         wprintf(L"%ls\n", array.data[i]);
