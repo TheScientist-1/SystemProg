@@ -2,11 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <locale.h>
 #include <wchar.h>
-#include <wctype.h>
-
-#define max_word_length 31
+#include <locale.h>
 
 typedef struct {
     wchar_t **data;
@@ -14,55 +11,25 @@ typedef struct {
     int capacity;
 } DynamicArray;
 
-bool isUniqueChars(const wchar_t *str) {
-    bool char_set[65536] = {false};
+bool isUniqueChars(wchar_t* str) {
+    bool char_set[65536] = { false };  // Assuming a maximum of 65536 different characters
     for (int i = 0; i < wcslen(str); i++) {
-        int val = (int) str[i];
-        if(char_set[val]) return false;
+        int val = str[i];
+        if (char_set[val]) {
+            return false;
+        }
         char_set[val] = true;
     }
     return true;
 }
 
-wchar_t *get_next_word(FILE *document) {
-    wchar_t *new_word_placeholder = malloc(sizeof(wchar_t) * max_word_length);
-    int pointer = 0;
-    wint_t character = fgetwc(document);
-
-    while (character != WEOF && (!iswalnum(character) && character != L'_')) {
-        character = fgetwc(document);  // Skip non-alphanumeric characters
-    }
-
-    while (character != WEOF && (iswalnum(character) || character == L'_')) {
-        new_word_placeholder[pointer] = character;
-        pointer++;
-        if (pointer == max_word_length - 1) {
-            break;  // Avoid buffer overflow
-        }
-        character = fgetwc(document);
-    }
-
-    if (pointer == 0) {
-        free(new_word_placeholder);
-        return NULL;
-    } else {
-        new_word_placeholder[pointer] = L'\0';
-        return new_word_placeholder;
-    }
-}
-
-void initArray(DynamicArray *array, int capacity) {
+void initArray(DynamicArray* array, int capacity) {
     array->data = (wchar_t **)malloc(sizeof(wchar_t *) * capacity);
     array->size = 0;
     array->capacity = capacity;
 }
 
-void insertArray(DynamicArray *array, const wchar_t *element) {
-    for (int i = 0; i < array->size; i++) {
-        if (wcscmp(array->data[i], element) == 0) {
-            return;  // Avoid duplicates
-        }
-    }
+void insertArray(DynamicArray* array, wchar_t* element) {
     if (array->size == array->capacity) {
         array->capacity *= 2;
         array->data = (wchar_t **)realloc(array->data, sizeof(wchar_t *) * array->capacity);
@@ -72,39 +39,79 @@ void insertArray(DynamicArray *array, const wchar_t *element) {
     array->size++;
 }
 
-void freeArray(DynamicArray *array) {
+void freeArray(DynamicArray* array) {
     for (int i = 0; i < array->size; i++) {
         free(array->data[i]);
     }
     free(array->data);
 }
 
+void extractWords(wchar_t* line, DynamicArray* array) {
+    wchar_t word[31];
+    int wordIndex = 0;
+    for (int i = 0; i < wcslen(line); i++) {
+        if (iswalpha(line[i])) {
+            word[wordIndex++] = line[i];
+        } else if (wordIndex > 0) {
+            word[wordIndex] = L'\0';
+            if (isUniqueChars(word)) {
+                insertArray(array, word);
+            }
+            wordIndex = 0;
+        }
+    }
+    if (wordIndex > 0) {
+        word[wordIndex] = L'\0';
+        if (isUniqueChars(word)) {
+            insertArray(array, word);
+        }
+    }
+}
+
 int main() {
-    setlocale(LC_ALL, "uk_UA.UTF-8");
-    FILE *file;
-    errno_t err = fopen_s(&file, "ukr.txt", "r, ccs=UTF-8");
-    if (err != 0) {
-        fprintf(stderr, "Could not open file\n");
+    setlocale(LC_ALL, "");
+    FILE *file = _wfopen(L"test_input/en.txt", L"r, ccs=UTF-8");
+    if (file == NULL) {
+        fwprintf(stderr, L"Could not open input file\n");
         return 1;
     }
 
     DynamicArray array;
     initArray(&array, 10);
 
-    wchar_t *word;
-    while ((word = get_next_word(file)) != NULL) {
-        printf(L"Read word: %S\n", word);
-        if (isUniqueChars(word)) {
-            insertArray(&array, word);
-        }
-        free(word);
+    wchar_t line[1024];
+    bool file_was_empty = true;
+    while (fgetws(line, sizeof(line)/sizeof(wchar_t), file)) {
+        file_was_empty = false;
+        extractWords(line, &array);
     }
 
     fclose(file);
 
     for (int i = 0; i < array.size; i++) {
-        printf(L"%S\n", array.data[i]);
+        wprintf(L"%ls\n", array.data[i]);
     }
+
+    FILE *outfile = _wfopen(L"test_output/output.txt", L"w, ccs=UTF-8");
+    if (outfile == NULL) {
+        fwprintf(stderr, L"Could not open output file\n");
+        freeArray(&array);
+        return 1;
+    }
+
+    if (file_was_empty) {
+        fwprintf(outfile, L"File was empty.\n");
+        wprintf(L"File was empty.\n");
+    } else if (array.size == 0) {
+        fwprintf(outfile, L"No words met the specified condition.\n");
+        wprintf(L"No words met the specified condition.\n");
+    } else {
+        for (int i = 0; i < array.size; i++) {
+            fwprintf(outfile, L"%ls\n", array.data[i]);
+        }
+    }
+
+    fclose(outfile);
 
     freeArray(&array);
 
