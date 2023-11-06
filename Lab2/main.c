@@ -94,7 +94,7 @@ void parseConfiguration(const char *filename, struct AutomatonConfig *config) {
     i = 0;
     struct StateTransition transition;
     while (fscanf(file, "%d %lc %d", &transition.startState, &transition.symbol, &transition.endState) == 3) {
-        printf("init.state: %d, symbol: %lc, fin.state: %d\n", transition.startState, transition.symbol,
+        printf("%d -->%lc--> %d\n", transition.startState, transition.symbol,
                transition.endState);
         config->transitions[i] = transition;
         i++;
@@ -121,35 +121,46 @@ void addStateToList(int state, struct States *stateList) {
 
 struct States findReachableStates(struct States initialStates, struct States *reachedStates, struct AutomatonConfig config) {
     struct States transitionalStates;
-    transitionalStates.states = (int *) malloc(config.initialSize * sizeof(int));
+    transitionalStates.states = (int *)malloc(config.initialSize * sizeof(int));
+    if (transitionalStates.states == NULL) {
+    }
     transitionalStates.size = 0;
-    bool isDone = true;
+    bool newStatesAdded = false;
+
     for (int i = 0; i < initialStates.size; i++) {
         int currentState = initialStates.states[i];
         for (int j = 0; j < config.automatonSize; j++) {
-            if (!StateinList(currentState, reachedStates)) {
-                addStateToList(currentState, reachedStates);
+            if (config.transitions[j].startState == currentState) {
+                int nextState = config.transitions[j].endState;
+                if (!StateinList(nextState, reachedStates)) {
+                    addStateToList(nextState, reachedStates);
+                    if (!StateinList(nextState, &transitionalStates)) {
+                        addStateToList(nextState, &transitionalStates);
+                        newStatesAdded = true;
+                    }
+                }
             }
-            if (config.transitions[j].startState == currentState &&
-                config.transitions[j].startState != config.transitions[j].endState &&
-                !StateinList(config.transitions[j].endState, reachedStates)) {
-                addStateToList(config.transitions[j].endState, &transitionalStates);
-                isDone = false;
-            }
-        }
-    }
-    if (!isDone) {
-        struct States nextStates = findReachableStates(transitionalStates, reachedStates, config);
-        for (int k = 0; k < nextStates.size; k++) {
-            addStateToList(nextStates.states[k], reachedStates);
         }
     }
 
-    for (int i = 0; i < initialStates.size; i++) {
-        addStateToList(initialStates.states[i], reachedStates);
+    if (newStatesAdded) {
+        struct States *nextTransitionalStates = malloc(sizeof(struct States));
+        nextTransitionalStates->states = malloc(config.initialSize * sizeof(int));
+        nextTransitionalStates->size = 0;
+        for (int i = 0; i < transitionalStates.size; i++) {
+            addStateToList(transitionalStates.states[i], nextTransitionalStates);
+        }
+
+        struct States nextStates = findReachableStates(*nextTransitionalStates, reachedStates, config);
+
+        free(nextTransitionalStates->states);
+        free(nextTransitionalStates);
     }
-    return transitionalStates;
+
+    free(transitionalStates.states);
+    return *reachedStates;
 }
+
 
 int findFinalState(struct Word inputWord, struct AutomatonConfig config, int initialState) {
     int currentState = initialState;
@@ -187,7 +198,6 @@ void printStateList(struct States stateList) {
         return;
     }
 
-    printf("Reachable states: ");
     for (int i = 0; i < stateList.size; i++) {
         printf("%d ", stateList.states[i]);
     }
@@ -196,64 +206,81 @@ void printStateList(struct States stateList) {
 
 int main() {
     setlocale(LC_ALL, "uk_UA.UTF-8");
-
-    printf("Enter the input word: ");
-    wchar_t inputBuffer[MAX_WORD_SIZE];
-    fgetws(inputBuffer, sizeof(inputBuffer), stdin);
-    inputBuffer[wcslen(inputBuffer) - 1] = L'\0';
-
-    struct Word w0;
-    w0.characters = inputBuffer;
-    w0.size = wcslen(inputBuffer);
+    printf("Automata \n");
 
     struct AutomatonConfig config;
     parseConfiguration("test.txt", &config);
 
     struct States initialStates;
-    initialStates.states = (int *) malloc(config.initialSize * sizeof(int));
+    initialStates.states = (int *)malloc(config.initialSize * sizeof(int));
     initialStates.size = 0;
     addStateToList(config.initialState, &initialStates);
 
-    struct States reachedStates;
-    reachedStates.states = (int *) malloc(config.initialSize * sizeof(int));
-    reachedStates.size = 0;
+    // Here, we should have w0, the predetermined word, read from the user or predefined
+    wchar_t w0_string[MAX_WORD_SIZE];
+    // For now, let's simulate that w0 is provided as user input
+    printf("Enter word w0: ");
+    fgetws(w0_string, MAX_WORD_SIZE, stdin);
+    w0_string[wcslen(w0_string) - 1] = L'\0'; // Remove newline at the end
 
-    struct States statesAfter_w0;
-    statesAfter_w0.states = (int *) malloc(config.initialSize * sizeof(int));
-    statesAfter_w0.size = 0;
+    struct Word w0;
+    w0.characters = w0_string;
+    w0.size = wcslen(w0_string);
 
-    struct States statesAfter_w1;
-    statesAfter_w1.states = (int *) malloc(config.initialSize * sizeof(int));
-    statesAfter_w1.size = 0;
+    // Process the word w0
+    int stateAfterW0 = findFinalState(w0, config, config.initialState);
+    if (stateAfterW0 == -1){
+        printf("Word w0 is not accepted\n");
+        return 0;
 
-    findReachableStates(initialStates, &reachedStates, config);
-    printStateList(reachedStates);
-
-    for (int i = 0; i < reachedStates.size; i++) {
-        int stateAfter_w0 = findFinalState(w0, config, reachedStates.states[i]);
-        if (stateAfter_w0 == -1) {
-            continue;
-        }
-        addStateToList(stateAfter_w0, &statesAfter_w0);
     }
-    printStateList(statesAfter_w0);
-    findReachableStates(statesAfter_w0, &statesAfter_w1, config);
-    printStateList(statesAfter_w1);
+    else {printf("State reached after processing w0: %d\n", stateAfterW0);}
 
+
+    struct States states_after_w0;
+    states_after_w0.states = (int *)malloc(config.initialSize * sizeof(int));
+    states_after_w0.size = 0;
+    addStateToList(stateAfterW0, &states_after_w0);
+
+    struct States states_after_w1;
+    states_after_w1.states = (int *) malloc(config.initialSize * sizeof(int));
+    states_after_w1.size = 0;
+
+    struct States reachableStates = findReachableStates(states_after_w0, &states_after_w0, config);
+    struct States reachableStates1 = findReachableStates(states_after_w0, &states_after_w1, config);
+
+/*    printf("States reachable after processing w0: ");
+    for (int i = 0; i < states_after_w0.size; ++i) {
+        printf("%d ", states_after_w0.states[i]);
+    }
+    printf("\n");*/
+
+
+    printf("States reachable after processing w1: ");
+    printStateList(reachableStates1);
 
     int isProper = 0;
-    for (int i = 0; i < statesAfter_w1.size; ++i) {
-        if (checkIfProperFinalState(statesAfter_w1.states[i], config)) {
+    int finalState = -1;
+    for (int i = 0; i < reachableStates.size; ++i) {
+        if (checkIfProperFinalState(reachableStates.states[i], config)) {
             isProper = 1;
+            finalState = reachableStates.states[i];
             break;
         }
     }
-
     if (isProper) {
-        printf("Accepted\n");
+        printf("Final state %d reached\n", finalState);
+        printf("Word w0w1 accepted\n");
     } else {
-        printf("Not accepted\n");
+        printf("Final state not reached. Word w0w1 not accepted\n");
     }
+
+
+    free(initialStates.states);
+    free(states_after_w0.states);
+    free(states_after_w1.states);
+    free(config.finalStates);
+    free(config.transitions);
 
     return 0;
 }

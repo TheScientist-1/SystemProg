@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1697398425 source:d:\ФКНК\3 курс\СисПрог\Лабораторні\lab2\main.c
+1699233496 source:d:\ФКНК\3 курс\СисПрог\Лабораторні\lab2\main.c
 	<stdio.h>
 	<stddef.h>
 	<stdlib.h>
@@ -8,12 +8,12 @@
 	<string.h>
 	"hashmap.h"
 
-1697390464 d:\ФКНК\3 курс\СисПрог\Лабораторні\lab2\hashmap.h
+1697386864 d:\ФКНК\3 курс\СисПрог\Лабораторні\lab2\hashmap.h
 	<stdbool.h>
 	<stddef.h>
 	<stdint.h>
 
-1697390309 source:d:\ФКНК\3 курс\СисПрог\Лабораторні\lab2\hashmap.c
+1697386709 source:d:\ФКНК\3 курс\СисПрог\Лабораторні\lab2\hashmap.c
 	<stdio.h>
 	<string.h>
 	<stdlib.h>
